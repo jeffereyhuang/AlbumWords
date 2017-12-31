@@ -3,15 +3,41 @@ from bs4 import BeautifulSoup as bs
 import collections
 import re
 import logging
+import base64
+import six
 
 # decide album flow (either one album at a time or all at once)
 #     so that means allowing for search of an album rather than just artist OR all albums together
-# tokens
 # web interface
-# refactoring
+# refactoring & debugging with info that it prints & security
 
 spotify_url = 'https://api.spotify.com/v1/'
-s_access_token = 'Bearer BQBAEWHtymP4CxDkVAVGRZZFYIUGszHS8b3Q868JJyAgc9g_FDbluHtxdhPbhftrlOMOQ43KFK6m7ANFcg4Q0rrk0aiVAxa4v5bMKoOwndHirSnzijOThkMLeDI-LhUW7pmQ2hnSU5X_xpE'
+
+def encode_auth(c_id, c_secret):
+  auth_header = base64.b64encode(six.text_type(c_id + ':' + c_secret).encode('ascii'))
+  return {'Authorization': 'Basic %s' % auth_header.decode('ascii')}
+
+def request_token(client_id, client_secret):
+    headers = encode_auth(client_id, client_secret)
+    data = {
+        'grant_type': 'client_credentials'
+    }
+
+    url = 'https://accounts.spotify.com/api/token'
+
+    response = requests.post(url, data=data, headers=headers, verify=True)
+    # if token.status_code != 200:
+    #     raise SpotifyOauthError(response.reason)
+    token = response.json()
+    return token
+# s_access_token = 'Bearer BQBAEWHtymP4CxDkVAVGRZZFYIUGszHS8b3Q868JJyAgc9g_FDbluHtxdhPbhftrlOMOQ43KFK6m7ANFcg4Q0rrk0aiVAxa4v5bMKoOwndHirSnzijOThkMLeDI-LhUW7pmQ2hnSU5X_xpE'
+
+client_id = '940f620a6a704e01850cabb4fc4939f8'
+client_secret = '83127777e7d9449a9b6c3fec01499da1'
+token = request_token(client_id, client_secret)
+s_access_token = token['token_type'] + ' ' + token['access_token']
+
+
 ## search: returns artists or artist name
 def spotify_search(query, search_type):
   url = spotify_url + "search"
@@ -24,7 +50,7 @@ def spotify_search(query, search_type):
   sp = requests.get(url, headers= sp_headers, params = params).json()
   check = sp.get('error')
   if check:
-    print "Refresh Access Token"
+      request_token(client_id, client_secret)
   for artist in sp['artists']['items']:
       if artist['name'] == query:
           return artist['id'], artist['name']
@@ -50,7 +76,7 @@ def request(url):
     sp_headers = {'Authorization': s_access_token}
     return requests.get(url, headers = sp_headers).json()
 
-def get_song_titles(album):
+def get_song_titles(album_id):
   song_list = []
   url = spotify_url + "albums/" + album_id + "/tracks"
   response = request(url)
