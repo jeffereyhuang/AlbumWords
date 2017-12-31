@@ -4,9 +4,14 @@ import collections
 import re
 import logging
 
+# decide album flow (either one album at a time or all at once)
+#     so that means allowing for search of an album rather than just artist OR all albums together
+# tokens
+# web interface
+# refactoring
 
 spotify_url = 'https://api.spotify.com/v1/'
-s_access_token = 'Bearer BQB9Bas1Pv5mtMjSYCuxQ-ssv-t8ywieJBKUETN18YnrgExeWqSCLDrIJmICUrk3zleZWngrSPn2pT6-GJrpa8UC4X9sIJ7mqzeO4GzIKdug4T4yp5ycHekDdFHla6lHA8J-LywQQpjqgd8'
+s_access_token = 'Bearer BQBAEWHtymP4CxDkVAVGRZZFYIUGszHS8b3Q868JJyAgc9g_FDbluHtxdhPbhftrlOMOQ43KFK6m7ANFcg4Q0rrk0aiVAxa4v5bMKoOwndHirSnzijOThkMLeDI-LhUW7pmQ2hnSU5X_xpE'
 ## search: returns artists or artist name
 def spotify_search(query, search_type):
   url = spotify_url + "search"
@@ -17,7 +22,8 @@ def spotify_search(query, search_type):
   sp_headers = {'Authorization': s_access_token}
 
   sp = requests.get(url, headers= sp_headers, params = params).json()
-  if not sp['artists']:
+  check = sp.get('error')
+  if check:
     print "Refresh Access Token"
   for artist in sp['artists']['items']:
       if artist['name'] == query:
@@ -26,6 +32,7 @@ def spotify_search(query, search_type):
 
 def get_albums(artist_id):
   albums = []
+  check = []
   sp_headers = {'Authorization': s_access_token}
   params = {
     'album_type': 'album'
@@ -33,15 +40,15 @@ def get_albums(artist_id):
   url = spotify_url + "artists/" + artist_id + "/albums"
   sp = requests.get(url, headers= sp_headers, params = params).json()
   for album in sp['items']:
-    albums.append(album['id'])
+    if album['name'] in check:
+        continue
+    albums.append(album)
+    check.append(album['name'])
   return albums
 
 def request(url):
     sp_headers = {'Authorization': s_access_token}
     return requests.get(url, headers = sp_headers).json()
-
-# def title_check(title):
-#   return title.split(" - Album Version")[0]
 
 def get_song_titles(album):
   song_list = []
@@ -87,7 +94,7 @@ def lyrics_from_song_url(song_url):
   page = requests.get(song_url)
   html = bs(page.text, "html.parser")
   lyrics = html.find('div', class_='lyrics').get_text()
-  return lyrics.encode('utf-8')
+  return lyrics.encode("utf-8")
 
 def clean_lyrics(words):
   words = words.replace("\n", " ")
@@ -106,33 +113,37 @@ def count(words):
         wordcount[word] += 1
   return wordcount
 
+# gets all lyrics for each song and creates count
 def album_lyrics(song_list, artist_name):
   lyrics_collection = collections.Counter()
   for song in song_list:
     g_song_info = get_genius_lyrics_url(song, artist_name)
     if not g_song_info:
-      print "No song found"
+      print "Error - No song found"
+      continue
     lyrics = lyrics_from_song_url(g_song_info['result']['url'])
-    word_dict = count(clean_lyrics(lyrics))
-    lyrics_collection += collections.Counter(word_dict)
+    lyrics_collection += create_counter(lyrics)
+    print song
   return lyrics_collection
 
-def get_album_name(album_id):
-  url = spotify_url + 'albums/' + album_id
-  response = request(url)
-  return response['name']
+def create_counter(lyrics):
+  word_dict = count(clean_lyrics(lyrics))
+  return collections.Counter(word_dict)
 
 # get an artist id and name from Spotify API
 artist_id, artist_name = spotify_search('Kanye West', 'artist')
-# get albums for each artist from Spotify API
+# returns album object for each artist from Spotify API
 albums = get_albums(artist_id)
 
-for album_id in albums:
-  album_name = get_album_name(album_id)
-  print album_name
+for album_obj in albums:
+  print album_obj['name']
+
   # Gets Tracks from each Album from Spotify API
-  song_list = get_song_titles(album_id)
+  song_list = get_song_titles(album_obj['id'])
+
   # Scrapes Genius API for each song and counts words used in each
   word_counter = album_lyrics(song_list, artist_name)
-  for word, count in word_counter.most_common(10):
-    print(word, count)
+  if not word_counter:
+      continue
+  for word, repeats in word_counter.most_common(10):
+    print(word, repeats)
