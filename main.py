@@ -6,6 +6,75 @@ import logging
 import base64
 import six
 
+
+
+
+# def get_playlist(name):
+#     call to user's playlist
+#     response = JSON
+#     for playlist in repsonse:
+#         if name == playlist['name']
+#     return playlist_id
+#
+# def playlist_tracks(p_id):
+#     GET https://api.spotify.com/v1/users/{user_id}/playlists/{playlist_id}/tracks
+#     response = tracks
+#
+# def get_features(id):
+#     https://developer.spotify.com/web-api/get-several-audio-features/
+#     return array_of_features
+#
+# def get_best_song(song_quality, playlist):
+#     p_id = get_playlist(playlist)
+#     playlist = get_features(p_id)
+#     top = playlist.head
+#     for track in playlist:
+#         if track[song_quality] > top[song_quality]:
+#             top = track
+#     return top
+#
+# def get_worst_song(song_quality, playlist):
+#     p_id = get_playlist(playlist)
+#     playlist = get_features(p_id)
+#     top = playlist.head
+#     for track in playlist:
+#         if track[song_quality] < top[song_quality]:
+#             top = track
+#     return top
+#
+# def play_song_intent(song_quality):
+#     if song_quality is sad:
+#         play get_worst_song_intent(song_quality):
+#     else
+#         play get_best_song
+#
+# def sort(tracks_array, song_quality):
+#     return sorted array
+#
+# def find(song, playlist):
+#     position = 0
+#     for track in playlist:
+#         if song['id'] = playlist:
+#             return position
+#         else
+#             position += 1
+#
+# def reorder_playlist_intent(playlist, song_quality):
+#     p_id = get_playlist(playlist)
+#     song_array = get_features(p_id)
+#     sorted_array = sort(song_array, song_quality)
+#     range_length = 0
+#     for song in sorted_array:
+#         new_position = 1
+#         range_start = find(song, song_array)
+#         insert_before = new_position
+#         https://developer.spotify.com/web-api/reorder-playlists-tracks/
+#         PUT https://api.spotify.com/v1/users/{user_id}/playlists/{playlist_id}/tracks
+#         new_position += 1
+#     play playlist
+#
+#     return
+
 # decide album flow (either one album at a time or all at once)
 #     so that means allowing for search of an album rather than just artist OR all albums together
 # web interface
@@ -125,7 +194,7 @@ def lyrics_from_song_url(song_url):
 def clean_lyrics(words):
   words = words.replace("\n", " ")
   words = words.replace(' {2,}', ' ')
-  words = re.sub("[\(\[].*?[\)\]]", ' ', words)
+  words = re.sub("[\(\[].*?[\)\]],", ' ', words)
   return words.lower().split(" ")
 
 def count(words):
@@ -156,20 +225,22 @@ def create_counter(lyrics):
   word_dict = count(clean_lyrics(lyrics))
   return collections.Counter(word_dict)
 
-# get an artist id and name from Spotify API
-artist_id, artist_name = spotify_search('Kanye West', 'artist')
-# returns album object for each artist from Spotify API
-albums = get_albums(artist_id)
+def run():
+    # get an artist id and name from Spotify API
+    artist_id, artist_name = spotify_search('Miguel', 'artist')
+    # returns album object for each artist from Spotify API
+    albums = get_albums(artist_id)
 
-for album_obj in albums:
-  print album_obj['name']
+    for album_obj in albums:
+      print album_obj['name']
 
-  # Gets Tracks from each Album from Spotify API
-  song_list = get_song_titles(album_obj['id'])
+      # Gets Tracks from each Album from Spotify API
+      song_list = get_song_titles(album_obj['id'])
 
-  # Scrapes Genius API for each song and counts words used in each
-  word_counter = album_lyrics(song_list, artist_name)
-  if not word_counter:
-      continue
-  for word, repeats in word_counter.most_common(10):
-    print(word, repeats)
+      # Scrapes Genius API for each song and counts words used in each
+      word_counter = album_lyrics(song_list, artist_name)
+      if not word_counter:
+          continue
+      for word, repeats in word_counter.most_common(20):
+        print(word, repeats)
+    return 0
