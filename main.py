@@ -9,21 +9,6 @@ import six
 
 
 
-# def get_playlist(name):
-#     call to user's playlist
-#     response = JSON
-#     for playlist in repsonse:
-#         if name == playlist['name']
-#     return playlist_id
-#
-# def playlist_tracks(p_id):
-#     GET https://api.spotify.com/v1/users/{user_id}/playlists/{playlist_id}/tracks
-#     response = tracks
-#
-# def get_features(id):
-#     https://developer.spotify.com/web-api/get-several-audio-features/
-#     return array_of_features
-#
 # def get_best_song(song_quality, playlist):
 #     p_id = get_playlist(playlist)
 #     playlist = get_features(p_id)
@@ -48,32 +33,7 @@ import six
 #     else
 #         play get_best_song
 #
-# def sort(tracks_array, song_quality):
-#     return sorted array
 #
-# def find(song, playlist):
-#     position = 0
-#     for track in playlist:
-#         if song['id'] = playlist:
-#             return position
-#         else
-#             position += 1
-#
-# def reorder_playlist_intent(playlist, song_quality):
-#     p_id = get_playlist(playlist)
-#     song_array = get_features(p_id)
-#     sorted_array = sort(song_array, song_quality)
-#     range_length = 0
-#     for song in sorted_array:
-#         new_position = 1
-#         range_start = find(song, song_array)
-#         insert_before = new_position
-#         https://developer.spotify.com/web-api/reorder-playlists-tracks/
-#         PUT https://api.spotify.com/v1/users/{user_id}/playlists/{playlist_id}/tracks
-#         new_position += 1
-#     play playlist
-#
-#     return
 
 # decide album flow (either one album at a time or all at once)
 #     so that means allowing for search of an album rather than just artist OR all albums together
@@ -106,6 +66,67 @@ client_secret = '83127777e7d9449a9b6c3fec01499da1'
 token = request_token(client_id, client_secret)
 s_access_token = token['token_type'] + ' ' + token['access_token']
 
+def request(url):
+    sp_headers = {'Authorization': s_access_token}
+    sp = requests.get(url, headers= sp_headers).json()
+    check = sp.get('error')
+    if check:
+        request_token(client_id, client_secret)
+        sp = requests.get(url, headers= sp_headers, params = params).json()
+    return sp
+
+
+def get_playlist(name):
+    sp = request('https://api.spotify.com/v1/me/playlists')
+    for playlist in sp:
+        if name == playlist['name']:
+            return playlist
+    search = spotify_search(name, 'playlist')
+    return spotify_search['playlists']['items'][0]
+    # or raise error
+
+def playlist_tracks(playlist):
+    sp = request('https://api.spotify.com/v1/users/' + playlist['owner']['id'] + '/playlists/' + playlist['id'] + '/tracks')
+    return sp
+
+def get_features(tracks):
+    t_ids = ''
+    for track in tracks:
+        t_ids += track['id']
+    features_array = request('https://api.spotify.com/v1/audio-features?ids=' + t_ids)
+    return features_array
+
+def find(song, playlist):
+    position = 0
+    for track in playlist:
+        if song['id'] = playlist:
+            return position
+        else
+            position += 1
+
+def sort(tracks_array, song_quality):
+    return sorted(tracks_array, key=lambda track: track[song_quality])
+
+def reorder_playlist_intent(playlist_name, song_quality):
+    playlist = get_playlist(playlist_name)
+    tracks = playlist_tracks(playlist)
+    features_array = get_features(tracks)
+    sorted_array = sort(features_array, song_quality)
+    new_position = 1
+    for song in sorted_array:
+        data = {
+          'range_start': find(song, song_array),
+          'range_length': 0,
+          'insert_before' = new_position
+        }
+        headers = {
+            'Authorization': s_access_token
+        }
+        url = 'https://api.spotify.com/v1/users/' + playlist['owner']['id'] + '/playlists/' + playlist['id'] + '/tracks'
+        response = request.put(url, headers = headers, data = data)
+        new_position += 1
+    return playlist
+
 
 ## search: returns artists or artist name
 def spotify_search(query, search_type):
@@ -115,15 +136,16 @@ def spotify_search(query, search_type):
     'type': search_type
   }
   sp_headers = {'Authorization': s_access_token}
-
   sp = requests.get(url, headers= sp_headers, params = params).json()
   check = sp.get('error')
   if check:
       request_token(client_id, client_secret)
-  for artist in sp['artists']['items']:
-      if artist['name'] == query:
-          return artist['id'], artist['name']
-  return sp['artists']['items']
+      sp = requests.get(url, headers= sp_headers, params = params).json()
+  return sp
+  # for artist in sp['artists']['items']:
+  #     if artist['name'] == query:
+  #         return artist['id'], artist['name']
+  # return sp['artists']['items']
 
 def get_albums(artist_id):
   albums = []
@@ -141,9 +163,7 @@ def get_albums(artist_id):
     check.append(album['name'])
   return albums
 
-def request(url):
-    sp_headers = {'Authorization': s_access_token}
-    return requests.get(url, headers = sp_headers).json()
+
 
 def get_song_titles(album_id):
   song_list = []
